@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>HDFC Bank | MSME Agri-Business Loan</title>
+    <style>
+        :root {
+            --hdfc-blue: #004c8f;
+            --hdfc-red: #ed1c24;
+            --success: #2ecc71;
+            --light-bg: #f4f7f9;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Segoe UI', Roboto, sans-serif; background: #e9eff5; margin: 0; display: flex; justify-content: center; min-height: 100vh; }
+
+        .container {
+            width: 100%;
+            max-width: 500px;
+            background: #fff;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            position: relative;
+        }
+
+        header {
+            padding: 15px 20px;
+            background: #fff;
+            border-bottom: 3px solid var(--hdfc-blue);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .logo img { height: 28px; }
+
+        /* Progress Bar */
+        .progress-bar { display: flex; padding: 10px 20px; gap: 4px; background: #fff; }
+        .p-step { height: 4px; flex: 1; background: #eee; border-radius: 2px; transition: 0.3s; }
+        .p-step.active { background: var(--hdfc-red); }
+
+        .content { padding: 20px; flex: 1; }
+        .step-panel { display: none; animation: fadeIn 0.4s ease; }
+        .step-panel.active { display: block; }
+
+        h2 { font-size: 18px; color: var(--hdfc-blue); margin: 0 0 15px; border-left: 4px solid var(--hdfc-red); padding-left: 10px; }
+        
+        .field-group { margin-bottom: 15px; }
+        label { font-size: 10px; font-weight: 700; color: #666; text-transform: uppercase; display: block; margin-bottom: 5px; }
+        input, select, textarea { 
+            width: 100%; padding: 12px; border: 1px solid #d1d9e0; border-radius: 4px; 
+            font-size: 14px; background: #fcfdfe; outline: none; transition: 0.2s;
+        }
+        input:focus { border-color: var(--hdfc-blue); background: #fff; box-shadow: 0 0 0 3px rgba(0,76,143,0.05); }
+
+        /* Animated Success Icon */
+        #success-screen { display: none; text-align: center; padding: 40px 20px; animation: popIn 0.5s ease; }
+        .success-animation { margin: 0 auto 20px; width: 80px; }
+        .checkmark { width: 80px; height: 80px; border-radius: 50%; display: block; stroke-width: 2; stroke: var(--success); stroke-miterlimit: 10; animation: fill .4s ease-in-out .4s forwards; }
+        .checkmark__circle { stroke-dasharray: 166; stroke-dashoffset: 166; stroke-width: 2; stroke-miterlimit: 10; stroke: var(--success); fill: none; animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards; }
+        .checkmark__check { transform-origin: 50% 50%; stroke-dasharray: 48; stroke-dashoffset: 48; animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards; }
+
+        /* Receipt */
+        .receipt { background: #f9f9f9; border: 1px dashed #bbb; padding: 15px; text-align: left; margin: 20px 0; border-radius: 4px; }
+        .r-row { display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 4px; font-size: 12px; }
+        .r-val { font-weight: bold; font-family: monospace; color: #000; }
+
+        footer { padding: 15px 20px; background: #fff; border-top: 1px solid #eee; display: flex; gap: 10px; position: sticky; bottom: 0; }
+        .btn { flex: 1; padding: 15px; border: none; border-radius: 4px; font-weight: bold; font-size: 14px; cursor: pointer; text-transform: uppercase; }
+        .btn-blue { background: var(--hdfc-blue); color: #fff; }
+        .btn-gray { background: #f0f0f0; color: #555; }
+        .btn-red { background: var(--hdfc-red); color: #fff; }
+
+        @keyframes stroke { 100% { stroke-dashoffset: 0; } }
+        @keyframes fill { 100% { box-shadow: inset 0px 0px 0px 40px var(--success); stroke: #fff; } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        @media print { footer, .progress-bar { display: none !important; } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div class="logo"><img src="https://i.ibb.co/RkDRK8fM/hdfc-bank-logo.jpg"></div>
+        <div style="font-size: 9px; font-weight: 900; color: var(--hdfc-blue);">OFFICIAL AGRI-LOAN</div>
+    </header>
+
+    <div class="progress-bar" id="progressBar">
+        <div class="p-step active"></div><div class="p-step"></div><div class="p-step"></div><div class="p-step"></div>
+    </div>
+
+    <div id="form-container" class="content">
+        <form id="agriForm">
+            <div class="step-panel active">
+                <h2>Business Entity</h2>
+                <div class="field-group"><label>Nature of Venture</label><select><option>Dairy Farming</option><option>Poultry Farm</option><option>Fishery</option></select></div>
+                <div class="field-group"><label>Unit Name</label><input type="text" placeholder="e.g. Green Valley Farms" required></div>
+                <div class="field-group"><label>Establishment Date</label><input type="date"></div>
+                <div class="field-group"><label>MSME Reg No.</label><input type="text" placeholder="UDYAM-XX-00-0000"></div>
+                <div class="field-group"><label>Firm PAN</label><input type="text" style="text-transform:uppercase"></div>
+            </div>
+
+            <div class="step-panel">
+                <h2>Applicant Details</h2>
+                <div class="field-group"><label>Full Name</label><input type="text" required></div>
+                <div class="field-group"><label>Father's Name</label><input type="text"></div>
+                <div class="field-group"><label>Mobile Number</label><input type="tel" required></div>
+                <div class="field-group"><label>Aadhar Number</label><input type="number"></div>
+                <div class="field-group"><label>Permanent Address</label><textarea rows="2"></textarea></div>
+                <div class="field-group"><label>Pincode</label><input type="number"></div>
+            </div>
+
+            <div class="step-panel">
+                <h2>Farm Details</h2>
+                <div class="field-group"><label>Total Land Area (Acres)</label><input type="text"></div>
+                <div class="field-group"><label>Livestock Count</label><input type="number" placeholder="Animals/Birds"></div>
+                <div class="field-group"><label>Annual Turn-over</label><input type="number" placeholder="₹"></div>
+                <div class="field-group"><label>Account Number</label><input type="number"></div>
+                <div class="field-group"><label>IFSC Code</label><input type="text"></div>
+            </div>
+
+            <div class="step-panel">
+                <h2>Loan Request</h2>
+                <div class="field-group"><label>Requested Amount (₹)</label><input type="number" required></div>
+                <div class="field-group"><label>Tenure (Months)</label><select><option>36</option><option>60</option><option>84</option></select></div>
+                <div class="field-group"><label>Purpose</label><input type="text" placeholder="Expansion/Working Capital"></div>
+                <div style="font-size: 11px; color: #666; margin-top: 15px;">
+                    <input type="checkbox" required> I agree to all HDFC Bank terms and authorize credit verification.
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div id="success-screen">
+        <div class="success-animation">
+            <svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+                <circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none"/>
+                <path class="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+            </svg>
+        </div>
+        <h2 style="color: var(--success);">Application Received</h2>
+        <p style="font-size: 12px; color: #888;">Thank you for choosing HDFC Bank.</p>
+        
+        <div class="receipt">
+            <div class="r-row"><span>Ref Number:</span><span class="r-val">HDFC-AG-88291</span></div>
+            <div class="r-row"><span>Loan ID:</span><span class="r-val">LNP-7728109</span></div>
+            <div class="r-row"><span>Transaction ID:</span><span class="r-val">TXN00992144</span></div>
+            <div class="r-row"><span>CIBIL Case:</span><span class="r-val">CB-882101-X</span></div>
+            <div class="r-row"><span>Branch:</span><span class="r-val">AGRI-HQ-MUM</span></div>
+            <div class="r-row"><span>Date:</span><span class="r-val">01-May-2026</span></div>
+            <div class="r-row" style="border:none"><span>Status:</span><span class="r-val" style="color:var(--hdfc-blue)">UNDER-REVIEW</span></div>
+        </div>
+        <button class="btn btn-blue" onclick="window.print()" style="width:100%">Download Receipt</button>
+    </div>
+
+    <footer id="nav-footer">
+        <button class="btn btn-gray" id="prevBtn" onclick="nav(-1)" style="display:none;">Back</button>
+        <button class="btn btn-blue" id="nextBtn" onclick="nav(1)">Continue</button>
+        <button class="btn btn-red" id="submitBtn" onclick="submitForm()" style="display:none;">Submit Final</button>
+    </footer>
+</div>
+
+<script>
+    let step = 0;
+    const panels = document.querySelectorAll(".step-panel");
+    const dots = document.querySelectorAll(".p-step");
+
+    function nav(n) {
+        panels[step].classList.remove("active");
+        dots[step].classList.remove("active");
+        step += n;
+        panels[step].classList.add("active");
+        dots[step].classList.add("active");
+
+        document.getElementById("prevBtn").style.display = step === 0 ? "none" : "block";
+        if(step === panels.length - 1) {
+            document.getElementById("nextBtn").style.display = "none";
+            document.getElementById("submitBtn").style.display = "block";
+        } else {
+            document.getElementById("nextBtn").style.display = "block";
+            document.getElementById("submitBtn").style.display = "none";
+        }
+    }
+
+    function submitForm() {
+        if(document.getElementById("agriForm").checkValidity()) {
+            document.getElementById("form-container").style.display = "none";
+            document.getElementById("nav-footer").style.display = "none";
+            document.getElementById("progressBar").style.display = "none";
+            document.getElementById("success-screen").style.display = "block";
+        } else {
+            alert("Please fill all required fields and accept terms.");
+        }
+    }
+</script>
+
+</body>
+</html>
+
